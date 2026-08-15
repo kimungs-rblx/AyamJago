@@ -4,10 +4,31 @@ local VirtualUser = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
+
+-- CLEANUP EXECUTIONS SEBELUMNYA (Agar aman saat di-execute ulang/close)
+pcall(function()
+    if PlayerGui:FindFirstChild("RagdollMenu") then PlayerGui.RagdollMenu:Destroy() end
+    if PlayerGui:FindFirstChild("IntroGui") then PlayerGui.IntroGui:Destroy() end
+    if PlayerGui:FindFirstChild("CustomNotifyGui") then PlayerGui.CustomNotifyGui:Destroy() end
+    
+    -- Reset state karakter jika ada yang tertinggal
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChild("Humanoid")
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp); hum.WalkSpeed = 16 end
+        if root then root.AssemblyLinearVelocity = Vector3.new(0, 0, 0) end
+        for _, p in pairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide = true end
+        end
+    end
+end)
 
 -- FUNGSI CUSTOM NOTIFIKASI
 local function notify(title, text)
@@ -66,14 +87,11 @@ local function notify(title, text)
 end
 
 -- ANTI-AFK
-LocalPlayer.Idled:Connect(function()
+local afkConn = LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Down(Vector2.new(0,0), Camera.CFrame)
     task.wait(1)
     VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
 end)
-
-if PlayerGui:FindFirstChild("RagdollMenu") then PlayerGui.RagdollMenu:Destroy() end
-if PlayerGui:FindFirstChild("IntroGui") then PlayerGui.IntroGui:Destroy() end
 
 -- FUNGSI INTRO (3.5 DETIK)
 local function showIntro(onComplete)
@@ -176,7 +194,7 @@ showIntro(function()
     CreditLabel.Text = "AyamJago-kimungs"
     CreditLabel.Parent = MainFrame
 
-    -- Tombol Close (X)
+    -- Tombol Close (X) - Mematikan seluruh fitur & menghapus GUI
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.new(0, 18, 0, 18)
     CloseBtn.Position = UDim2.new(1, -20, 0, 2)
@@ -188,7 +206,20 @@ showIntro(function()
     CloseBtn.ZIndex = 10
     CloseBtn.Parent = MainFrame
     CloseBtn.MouseButton1Click:Connect(function() 
-        notify("System", "Menu ditutup")
+        notify("System", "Semua fitur dimatikan & menu ditutup")
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp); hum.WalkSpeed = 16 end
+                if root then root.AssemblyLinearVelocity = Vector3.new(0, 0, 0) end
+                for _, p in pairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = true end
+                end
+            end
+            if afkConn then afkConn:Disconnect() end
+        end)
         ScreenGui:Destroy() 
     end)
 
@@ -339,8 +370,12 @@ showIntro(function()
         return btn
     end
 
-    -- FUNGSI TELEPORT & SAVE
-    local RagdollEvent = ReplicatedStorage.Library.Modules.Ragdoll.Ragdoll
+    -- FUNGSI AMAN UNTUK RAGDOLL EVENT (Universal Safe Check)
+    local RagdollEvent = nil
+    pcall(function()
+        RagdollEvent = ReplicatedStorage.Library.Modules.Ragdoll.Ragdoll
+    end)
+
     local function teleportPlayer(targetPos)
         local char = LocalPlayer.Character
         if not char or not char:FindFirstChild("HumanoidRootPart") then return end
@@ -348,11 +383,16 @@ showIntro(function()
         local hum = char:FindFirstChild("Humanoid")
         local safePos = Vector3.new(targetPos.X, targetPos.Y + 3, targetPos.Z)
         root.CFrame = CFrame.new(safePos)
-        pcall(function() firesignal(RagdollEvent.OnClientEvent, "Make", 2.5, safePos) end)
-        task.delay(0.5, function()
-            pcall(function() firesignal(RagdollEvent.OnClientEvent, "Destroy", 2.5) end)
+        
+        if RagdollEvent then
+            pcall(function() firesignal(RagdollEvent.OnClientEvent, "Make", 2.5, safePos) end)
+            task.delay(0.5, function()
+                pcall(function() firesignal(RagdollEvent.OnClientEvent, "Destroy", 2.5) end)
+                if hum then hum.PlatformStanding = false; hum.Sit = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+            end)
+        else
             if hum then hum.PlatformStanding = false; hum.Sit = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
-        end)
+        end
     end
 
     local savedPos = nil
@@ -372,9 +412,47 @@ showIntro(function()
         if char then
             for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then p.Anchored = false end end
             if char:FindFirstChild("Humanoid") then char.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end
-            pcall(function() firesignal(RagdollEvent.OnClientEvent, "Destroy", 2.5) end)
+            if RagdollEvent then
+                pcall(function() firesignal(RagdollEvent.OnClientEvent, "Destroy", 2.5) end)
+            end
             notify("System", "Karakter berhasil di-fix!")
         end
+    end)
+
+    -- Fitur Rejoin Server
+    createButton("Rejoin", Color3.fromRGB(30, 100, 180), function()
+        notify("System", "Rejoining server...")
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+        end)
+    end)
+
+    -- Fitur Server Hop
+    createButton("Server Hop", Color3.fromRGB(120, 30, 180), function()
+        notify("System", "Mencari server lain...")
+        pcall(function()
+            local servers = {}
+            local success, err = pcall(function()
+                local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+                local response = game:HttpGet(url)
+                local data = HttpService:JSONDecode(response)
+                if data and data.data then
+                    for _, v in pairs(data.data) do
+                        if type(v) == "table" and v.maxPlayers and v.playing and v.playing < v.maxPlayers and v.id ~= game.JobId then
+                            table.insert(servers, v.id)
+                        end
+                    end
+                end
+            end)
+            
+            if #servers > 0 then
+                local randomServer = servers[math.random(1, #servers)]
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer, LocalPlayer)
+            else
+                notify("System", "Server lain tidak ditemukan, mencoba teleport standar...")
+                TeleportService:Teleport(game.PlaceId, LocalPlayer)
+            end
+        end)
     end)
 
     -- Toggle Buttons Helper
@@ -396,6 +474,84 @@ showIntro(function()
         end)
         return btn
     end
+
+    -- TP Player
+    createButton("TP Player", Color3.fromRGB(40, 40, 40), function()
+        local promptFrame = Instance.new("Frame")
+        promptFrame.Size = UDim2.new(0, 140, 0, 130)
+        promptFrame.Position = UDim2.new(0.5, -70, 0.5, -65)
+        promptFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        promptFrame.ZIndex = 100
+        promptFrame.Parent = ScreenGui
+        Instance.new("UICorner", promptFrame).CornerRadius = UDim.new(0, 6)
+
+        local closePrompt = Instance.new("TextButton", promptFrame)
+        closePrompt.Size = UDim2.new(0, 20, 0, 20)
+        closePrompt.Position = UDim2.new(1, -22, 0, 2)
+        closePrompt.BackgroundTransparency = 1
+        closePrompt.Text = "X"
+        closePrompt.TextColor3 = Color3.fromRGB(200, 40, 40)
+        closePrompt.Font = Enum.Font.GothamBold
+        closePrompt.TextSize = 12
+        closePrompt.ZIndex = 101
+        closePrompt.MouseButton1Click:Connect(function()
+            promptFrame:Destroy()
+        end)
+
+        local titleLabel = Instance.new("TextLabel", promptFrame)
+        titleLabel.Size = UDim2.new(1, -25, 0, 24)
+        titleLabel.Position = UDim2.new(0, 5, 0, 2)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "Select Player"
+        titleLabel.TextColor3 = Color3.new(1,1,1)
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.TextSize = 10
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.ZIndex = 101
+
+        local scrollingList = Instance.new("ScrollingFrame", promptFrame)
+        scrollingList.Size = UDim2.new(1, -10, 1, -30)
+        scrollingList.Position = UDim2.new(0, 5, 0, 28)
+        scrollingList.BackgroundTransparency = 1
+        scrollingList.BorderSizePixel = 0
+        scrollingList.ScrollBarThickness = 3
+        scrollingList.ZIndex = 101
+
+        local listLayout = Instance.new("UIListLayout", scrollingList)
+        listLayout.Padding = UDim.new(0, 3)
+        listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+        listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            scrollingList.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 4)
+        end)
+
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then
+                local pBtn = Instance.new("TextButton", scrollingList)
+                pBtn.Size = UDim2.new(0, 120, 0, 24)
+                pBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+                pBtn.TextColor3 = Color3.new(1,1,1)
+                pBtn.Font = Enum.Font.GothamBold
+                pBtn.TextSize = 10
+                pBtn.Text = p.Name
+                pBtn.ZIndex = 102
+                Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 4)
+
+                pBtn.MouseButton1Click:Connect(function()
+                    if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                        local char = LocalPlayer.Character
+                        if char and char:FindFirstChild("HumanoidRootPart") then
+                            char.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                            notify("TP Player", "Berhasil TP ke " .. p.Name)
+                        end
+                    else
+                        notify("TP Player", "Player tidak valid!")
+                    end
+                    promptFrame:Destroy()
+                end)
+            end
+        end
+    end)
 
     -- Speed
     local speedEnabled = false
@@ -448,39 +604,66 @@ showIntro(function()
         end
     end)
 
-    -- Fly
-    local flyBodyVel, flyBodyGyro, flyConn
+    -- Fly (Stabil, berdiri tegak sempurna, anti getar, tidak jatuh saat analog dilepas)
+    local flyConn, controlModule, lockedPosition
+    pcall(function()
+        controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
+    end)
+
     createToggle("Fly", function()
         local char = LocalPlayer.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hum = char and char:FindFirstChild("Humanoid")
         if not root or not hum then return end
         
-        hum.PlatformStanding = true
-        flyBodyVel = Instance.new("BodyVelocity", root)
-        flyBodyVel.Velocity = Vector3.new(0, 0, 0)
-        flyBodyVel.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        
-        flyBodyGyro = Instance.new("BodyGyro", root)
-        flyBodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-        flyBodyGyro.P = 10000
-        flyBodyGyro.CFrame = root.CFrame
+        lockedPosition = root.Position
         
         flyConn = RunService.RenderStepped:Connect(function()
             if not char or not char.Parent or not hum or hum.Health <= 0 then return end
-            local cam = workspace.CurrentCamera
-            local moveDir = hum.MoveDirection
-            local vel = cam.CFrame.LookVector * (moveDir.Z * 50) + cam.CFrame.RightVector * (moveDir.X * 50)
-            flyBodyVel.Velocity = vel
-            flyBodyGyro.CFrame = cam.CFrame
+            
+            hum:ChangeState(Enum.HumanoidStateType.Physics)
+            
+            local camCFrame = Camera.CFrame
+            local moveVector = Vector3.zero
+            if controlModule then
+                moveVector = controlModule:GetMoveVector()
+            end
+            
+            -- Menjaga karakter tetap berdiri tegak (horizontal look vector saja tanpa kemiringan atas/bawah)
+            local look = camCFrame.LookVector
+            local flatLook = Vector3.new(look.X, 0, look.Z)
+            if flatLook.Magnitude > 0 then
+                flatLook = flatLook.Unit
+            else
+                flatLook = Vector3.new(0, 0, -1)
+            end
+            
+            if moveVector.Magnitude > 0 then
+                local flySpeed = 50
+                local direction = (camCFrame.LookVector * -moveVector.Z) + (camCFrame.RightVector * moveVector.X) + (camCFrame.UpVector * (moveVector.Y or 0))
+                root.AssemblyLinearVelocity = direction * flySpeed
+                lockedPosition = root.Position
+                
+                -- Karakter menghadap arah kamera secara horizontal dan tetap tegak
+                root.CFrame = CFrame.new(root.Position, root.Position + flatLook)
+            else
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                -- Mengunci posisi tepat tanpa goyang & tetap berdiri tegak
+                root.CFrame = CFrame.new(lockedPosition, lockedPosition + flatLook)
+            end
         end)
     end, function()
         if flyConn then flyConn:Disconnect() end
-        if flyBodyVel then flyBodyVel:Destroy() end
-        if flyBodyGyro then flyBodyGyro:Destroy() end
+        lockedPosition = nil
         local char = LocalPlayer.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStanding = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+        local hum = char and char:FindFirstChild("Humanoid")
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if hum then 
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp) 
+        end
+        if root then
+            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        end
     end)
 
     -- Inf Jump
@@ -509,6 +692,12 @@ showIntro(function()
         end)
     end, function()
         if noclipConn then noclipConn:Disconnect() end
+        local char = LocalPlayer.Character
+        if char then
+            for _, p in pairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = true end
+            end
+        end
     end)
 
     -- Anti Fling
