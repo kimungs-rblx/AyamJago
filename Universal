@@ -1,17 +1,16 @@
--- GLOBAL GUARD: MENCEGAH SKRIP BERJALAN GANDA / MENUMPUK
+-- GLOBAL GUARD: MENCEGAH SKRIP BERJALAN GANDA / MENUMPUK (SOLUSI UI NUMPUK)
 if getgenv().AyamJagoRunning then
-    pcall(function()
-        local lp = game:GetService("Players").LocalPlayer
-        if lp and lp:FindFirstChild("PlayerGui") then
-            for _, g in pairs(lp.PlayerGui:GetChildren()) do
-                if g.Name == "RagdollMenu" or g.Name == "IntroGui" or g.Name == "CustomNotifyGui" then
-                    g:Destroy()
-                end
-            end
-        end
-    end)
+    return -- Menghentikan eksekusi secara paksa jika script sudah berjalan
 end
 getgenv().AyamJagoRunning = true
+
+-- FUNGSI AGAR SCRIPT OTOMATIS BERJALAN SAAT PINDAH MAP / TELEPORT
+local queue_on_teleport = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport) or (identifyexecutor and select(1, identifyexecutor()) == "Delta" and queue_on_teleport)
+if queue_on_teleport then
+    pcall(function()
+        queue_on_teleport(game:HttpGet("https://raw.githubusercontent.com/kimungs-rblx/AyamJago/refs/heads/main/Universal"))
+    end)
+end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -342,37 +341,45 @@ showIntro(function()
         setMinimized(true)
     end)
 
-    -- LOGIKA DRAG & KLIK SAAT MINIMIZE DENGAN THRESHOLD 3 PIXEL
-    local startInputPos, startGuiPos
-    local hasMoved = false
+    -- LOGIKA KLIK & TAHAN > 0.5 DETIK (MENAHAN / DRAG TANPA MEMBUKA MENU)
+    local clickStartTime = 0
+    local isDragging = false
+    local startInputPos
 
     MainFrame.InputBegan:Connect(function(input)
         if minimized and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            clickStartTime = tick()
+            isDragging = false
             startInputPos = input.Position
-            startGuiPos = MainFrame.Position
-            hasMoved = false
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
-        if minimized and startInputPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - startInputPos
-            if delta.Magnitude > 3 then
-                hasMoved = true
-            end
-            if hasMoved then
-                MainFrame.Position = UDim2.new(startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X, startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y)
+    MainFrame.InputChanged:Connect(function(input)
+        if minimized and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            -- SUDAH DIUBAH MENJADI 3 PIXEL
+            if startInputPos and (input.Position - startInputPos).Magnitude > 3 then
+                isDragging = true
             end
         end
     end)
 
-    UserInputService.InputEnded:Connect(function(input)
-        if minimized and startInputPos and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            if not hasMoved then
+    MainFrame.InputEnded:Connect(function(input)
+        if minimized and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            local holdDuration = tick() - clickStartTime
+            -- Hanya membuka menu jika diklik cepat di bawah 0.5 detik dan tidak sedang digeser
+            if holdDuration < 0.5 and not isDragging then
                 setMinimized(false)
             end
-            startInputPos = nil
-            hasMoved = false
+            isDragging = false
+        end
+    end)
+
+    -- DRAGGING LOGIC SAAT DI-MINIMIZE
+    UserInputService.InputChanged:Connect(function(input)
+        if minimized and isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - startInputPos
+            MainFrame.Position = UDim2.new(MainFrame.Position.X.Scale, MainFrame.Position.X.Offset + delta.X, MainFrame.Position.Y.Scale, MainFrame.Position.Y.Offset + delta.Y)
+            startInputPos = input.Position
         end
     end)
 
