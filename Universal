@@ -1,10 +1,17 @@
--- FUNGSI AGAR SCRIPT OTOMATIS BERJALAN SAAT PINDAH MAP / TELEPORT
-local queue_on_teleport = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport) or (identifyexecutor and select(1, identifyexecutor()) == "Delta" and queue_on_teleport)
-if queue_on_teleport then
+-- GLOBAL GUARD: MENCEGAH SKRIP BERJALAN GANDA / MENUMPUK
+if getgenv().AyamJagoRunning then
     pcall(function()
-        queue_on_teleport(game:HttpGet("https://raw.githubusercontent.com/kimungs-rblx/AyamJago/refs/heads/main/Universal"))
+        local lp = game:GetService("Players").LocalPlayer
+        if lp and lp:FindFirstChild("PlayerGui") then
+            for _, g in pairs(lp.PlayerGui:GetChildren()) do
+                if g.Name == "RagdollMenu" or g.Name == "IntroGui" or g.Name == "CustomNotifyGui" then
+                    g:Destroy()
+                end
+            end
+        end
     end)
 end
+getgenv().AyamJagoRunning = true
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,16 +22,19 @@ local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
--- CLEANUP EXECUTIONS SEBELUMNYA
+-- PEMBERSIHAN TOTAL (CLEANUP)
 pcall(function()
-    if PlayerGui:FindFirstChild("RagdollMenu") then PlayerGui.RagdollMenu:Destroy() end
-    if PlayerGui:FindFirstChild("IntroGui") then PlayerGui.IntroGui:Destroy() end
-    if PlayerGui:FindFirstChild("CustomNotifyGui") then PlayerGui.CustomNotifyGui:Destroy() end
+    for _, gui in pairs(PlayerGui:GetChildren()) do
+        if gui.Name == "RagdollMenu" or gui.Name == "IntroGui" or gui.Name == "CustomNotifyGui" then
+            gui:Destroy()
+        end
+    end
     
     local char = LocalPlayer.Character
     if char then
@@ -36,6 +46,34 @@ pcall(function()
             if p:IsA("BasePart") then p.CanCollide = true end
         end
     end
+end)
+
+-- DETEKSI KECEPATAN ASLI SERVER SECARA DINAMIS
+local serverWalkSpeed = 16
+local function updateServerSpeed()
+    pcall(function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            local h = LocalPlayer.Character.Humanoid
+            if h.WalkSpeed > 0 and h.WalkSpeed ~= 32 then
+                serverWalkSpeed = h.WalkSpeed
+            end
+        end
+    end)
+end
+updateServerSpeed()
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(1)
+    updateServerSpeed()
+end)
+
+-- FITUR AUTO REJOIN KETIKA DISCONNECT / KICK
+pcall(function()
+    CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
+        if child.Name == "ErrorPrompt" then
+            task.wait(2)
+            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        end
+    end)
 end)
 
 -- FUNGSI CUSTOM NOTIFIKASI
@@ -179,9 +217,9 @@ showIntro(function()
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Parent = PlayerGui
 
-    -- Main Frame (Lebar 128px)
+    -- Main Frame (Lebar 128px, Tinggi 190px)
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 128, 0, 230) 
+    MainFrame.Size = UDim2.new(0, 128, 0, 190) 
     MainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     MainFrame.BorderSizePixel = 0
@@ -215,12 +253,13 @@ showIntro(function()
     CloseBtn.Parent = MainFrame
     CloseBtn.MouseButton1Click:Connect(function() 
         notify("System", "Semua fitur dimatikan & menu ditutup")
+        getgenv().AyamJagoRunning = nil
         pcall(function()
             local char = LocalPlayer.Character
             if char then
                 local hum = char:FindFirstChild("Humanoid")
                 local root = char:FindFirstChild("HumanoidRootPart")
-                if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp); hum.WalkSpeed = 16 end
+                if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp); hum.WalkSpeed = serverWalkSpeed end
                 if root then root.AssemblyLinearVelocity = Vector3.new(0, 0, 0) end
                 for _, p in pairs(char:GetDescendants()) do
                     if p:IsA("BasePart") then p.CanCollide = true end
@@ -243,7 +282,6 @@ showIntro(function()
     MinBtn.ZIndex = 10
     MinBtn.Parent = MainFrame
 
-    -- LOGO IMAGE DIPERBESAR DI SINI (Ukuran 1.3 dari frame & dipusatkan)
     local MinimizedContent = Instance.new("ImageLabel")
     MinimizedContent.Size = UDim2.new(1.3, 0, 1.3, 0)
     MinimizedContent.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -254,14 +292,13 @@ showIntro(function()
     MinimizedContent.Visible = false
     MinimizedContent.Parent = MainFrame
 
-    -- GARIS/LAYOUT MERAH TETAP TIPIS (KETEBALAN 2)
     local minimizedStroke = Instance.new("UIStroke", MainFrame)
     minimizedStroke.Color = Color3.fromRGB(220, 40, 40)
     minimizedStroke.Thickness = 2 
     minimizedStroke.Enabled = false
 
     local minimized = false
-    local normalSize = UDim2.new(0, 128, 0, 230)
+    local normalSize = UDim2.new(0, 128, 0, 190)
     local minimizedSize = UDim2.new(0, 34, 0, 34) 
     local normalBgColor = Color3.fromRGB(20, 20, 20)
     local minimizedBgColor = Color3.fromRGB(75, 75, 75)
@@ -305,40 +342,37 @@ showIntro(function()
         setMinimized(true)
     end)
 
-    local draggingMin = false
-    local dragInputMin, dragStartMin, startPosMin
-    local movedMin = false
+    -- LOGIKA DRAG & KLIK SAAT MINIMIZE DENGAN THRESHOLD 3 PIXEL
+    local startInputPos, startGuiPos
+    local hasMoved = false
 
     MainFrame.InputBegan:Connect(function(input)
         if minimized and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-            draggingMin = true
-            dragStartMin = input.Position
-            startPosMin = MainFrame.Position
-            movedMin = false
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    draggingMin = false
-                    if not movedMin then
-                        setMinimized(false)
-                    end
-                end
-            end)
-        end
-    end)
-
-    MainFrame.InputChanged:Connect(function(input)
-        if minimized and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            dragInputMin = input
+            startInputPos = input.Position
+            startGuiPos = MainFrame.Position
+            hasMoved = false
         end
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if minimized and input == dragInputMin and draggingMin then
-            local delta = input.Position - dragStartMin
-            if delta.Magnitude > 4 then
-                movedMin = true
+        if minimized and startInputPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - startInputPos
+            if delta.Magnitude > 3 then
+                hasMoved = true
             end
-            MainFrame.Position = UDim2.new(startPosMin.X.Scale, startPosMin.X.Offset + delta.X, startPosMin.Y.Scale, startPosMin.Y.Offset + delta.Y)
+            if hasMoved then
+                MainFrame.Position = UDim2.new(startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X, startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y)
+            end
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if minimized and startInputPos and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+            if not hasMoved then
+                setMinimized(false)
+            end
+            startInputPos = nil
+            hasMoved = false
         end
     end)
 
@@ -591,7 +625,6 @@ showIntro(function()
 
     -- Speed
     local speedEnabled = false
-    local speedConn
     local speedValue = 32
 
     local btnSpeed = createButton("Speed", Color3.fromRGB(40, 40, 40), function() end)
@@ -625,24 +658,16 @@ showIntro(function()
                 speedEnabled = true
                 btnSpeed.TextColor3 = Color3.fromRGB(40, 200, 40)
                 notify("Speed", "Speed Diaktifkan ("..speedValue..")")
-                speedConn = RunService.Stepped:Connect(function()
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                        LocalPlayer.Character.Humanoid.WalkSpeed = speedValue
-                    end
-                end)
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.WalkSpeed = speedValue
+                end
             end)
         else
             speedEnabled = false
             btnSpeed.TextColor3 = Color3.fromRGB(200, 40, 40)
             notify("Speed", "Speed Dimatikan")
-            if speedConn then speedConn:Disconnect() end
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                local hum = LocalPlayer.Character.Humanoid
-                local defaultSpeed = 16
-                pcall(function()
-                    defaultSpeed = hum.DefaultWalkSpeed or 16
-                end)
-                hum.WalkSpeed = defaultSpeed
+                LocalPlayer.Character.Humanoid.WalkSpeed = serverWalkSpeed
             end
         end
     end)
