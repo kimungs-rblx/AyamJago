@@ -1,3 +1,11 @@
+-- FUNGSI AGAR SCRIPT OTOMATIS BERJALAN SAAT PINDAH MAP / TELEPORT
+local queue_on_teleport = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport) or (identifyexecutor and select(1, identifyexecutor()) == "Delta" and queue_on_teleport)
+if queue_on_teleport then
+    pcall(function()
+        queue_on_teleport(game:HttpGet("https://raw.githubusercontent.com/kimungs-rblx/AyamJago/refs/heads/main/Universal"))
+    end)
+end
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
@@ -6,18 +14,18 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
--- CLEANUP EXECUTIONS SEBELUMNYA (Agar aman saat di-execute ulang/close)
+-- CLEANUP EXECUTIONS SEBELUMNYA
 pcall(function()
     if PlayerGui:FindFirstChild("RagdollMenu") then PlayerGui.RagdollMenu:Destroy() end
     if PlayerGui:FindFirstChild("IntroGui") then PlayerGui.IntroGui:Destroy() end
     if PlayerGui:FindFirstChild("CustomNotifyGui") then PlayerGui.CustomNotifyGui:Destroy() end
     
-    -- Reset state karakter jika ada yang tertinggal
     local char = LocalPlayer.Character
     if char then
         local hum = char:FindFirstChild("Humanoid")
@@ -42,8 +50,8 @@ local function notify(title, text)
         notifyGui.Parent = PlayerGui
 
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 180, 0, 45)
-        frame.Position = UDim2.new(0.5, -90, 0, -50)
+        frame.Size = UDim2.new(0, 160, 0, 45)
+        frame.Position = UDim2.new(0.5, -80, 0, -50)
         frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         frame.BorderSizePixel = 0
         frame.Parent = notifyGui
@@ -71,12 +79,12 @@ local function notify(title, text)
         textLabel.TextXAlignment = Enum.TextXAlignment.Center
         textLabel.Parent = frame
 
-        local tweenIn = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -90, 0, 15)})
+        local tweenIn = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -80, 0, 15)})
         tweenIn:Play()
 
         task.delay(2, function()
             if frame and frame.Parent then
-                local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -90, 0, -50)})
+                local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -80, 0, -50)})
                 tweenOut:Play()
                 tweenOut.Completed:Connect(function()
                     notifyGui:Destroy()
@@ -93,7 +101,7 @@ local afkConn = LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Up(Vector2.new(0,0), Camera.CFrame)
 end)
 
--- FUNGSI INTRO (3.5 DETIK)
+-- FUNGSI INTRO (2.5 DETIK)
 local function showIntro(onComplete)
     pcall(function()
         local introGui = Instance.new("ScreenGui")
@@ -102,8 +110,8 @@ local function showIntro(onComplete)
         introGui.Parent = PlayerGui
 
         local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 180, 0, 55)
-        frame.Position = UDim2.new(0.5, -90, 0, -60)
+        frame.Size = UDim2.new(0, 160, 0, 55)
+        frame.Position = UDim2.new(0.5, -80, 0, -60)
         frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
         frame.BorderSizePixel = 0
         frame.Parent = introGui
@@ -132,8 +140,8 @@ local function showIntro(onComplete)
         subLabel.Parent = frame
 
         local barBg = Instance.new("Frame")
-        barBg.Size = UDim2.new(0, 160, 0, 4)
-        barBg.Position = UDim2.new(0.5, -80, 0, 42)
+        barBg.Size = UDim2.new(0, 140, 0, 4)
+        barBg.Position = UDim2.new(0.5, -70, 0, 42)
         barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         barBg.BorderSizePixel = 0
         barBg.Parent = frame
@@ -148,11 +156,11 @@ local function showIntro(onComplete)
         barFill.Parent = barBg
         Instance.new("UICorner", barFill).CornerRadius = UDim.new(0, 2)
 
-        TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -90, 0, 15)}):Play()
-        TweenService:Create(barFill, TweenInfo.new(3.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {Size = UDim2.new(0, 160, 0, 4)}):Play()
+        TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -80, 0, 15)}):Play()
+        TweenService:Create(barFill, TweenInfo.new(2.5, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {Size = UDim2.new(0, 140, 0, 4)}):Play()
 
-        task.delay(3.5, function()
-            local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -90, 0, -60)})
+        task.delay(2.5, function()
+            local tweenOut = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -80, 0, -60)})
             tweenOut:Play()
             tweenOut.Completed:Connect(function()
                 introGui:Destroy()
@@ -171,9 +179,9 @@ showIntro(function()
     ScreenGui.ResetOnSpawn = false
     ScreenGui.Parent = PlayerGui
 
-    -- Main Frame
+    -- Main Frame (Lebar 128px)
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 130, 0, 195) 
+    MainFrame.Size = UDim2.new(0, 128, 0, 230) 
     MainFrame.Position = UDim2.new(0.1, 0, 0.1, 0)
     MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     MainFrame.BorderSizePixel = 0
@@ -184,7 +192,7 @@ showIntro(function()
     mainCorner.CornerRadius = UDim.new(0, 8)
 
     local CreditLabel = Instance.new("TextLabel")
-    CreditLabel.Size = UDim2.new(1, -40, 0, 22)
+    CreditLabel.Size = UDim2.new(1, -40, 0, 24)
     CreditLabel.Position = UDim2.new(0, 5, 0, 2)
     CreditLabel.BackgroundTransparency = 1
     CreditLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -194,7 +202,7 @@ showIntro(function()
     CreditLabel.Text = "AyamJago-kimungs"
     CreditLabel.Parent = MainFrame
 
-    -- Tombol Close (X) - Mematikan seluruh fitur & menghapus GUI
+    -- Tombol Close (X)
     local CloseBtn = Instance.new("TextButton")
     CloseBtn.Size = UDim2.new(0, 18, 0, 18)
     CloseBtn.Position = UDim2.new(1, -20, 0, 2)
@@ -225,8 +233,8 @@ showIntro(function()
 
     -- Tombol Minimize (-)
     local MinBtn = Instance.new("TextButton")
-    MinBtn.Size = UDim2.new(0, 20, 0, 20)
-    MinBtn.Position = UDim2.new(1, -42, 0, 1)
+    MinBtn.Size = UDim2.new(0, 18, 0, 18)
+    MinBtn.Position = UDim2.new(1, -40, 0, 2)
     MinBtn.BackgroundTransparency = 1
     MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
     MinBtn.Font = Enum.Font.GothamBold
@@ -235,25 +243,25 @@ showIntro(function()
     MinBtn.ZIndex = 10
     MinBtn.Parent = MainFrame
 
-    -- Logo "A" (ImageLabel) untuk Mode Minimize (Ukuran penuh 1,0 1,0)
+    -- LOGO IMAGE DIPERBESAR DI SINI (Ukuran 1.3 dari frame & dipusatkan)
     local MinimizedContent = Instance.new("ImageLabel")
-    MinimizedContent.Size = UDim2.new(1, 0, 1, 0)
-    MinimizedContent.Position = UDim2.new(0, 0, 0, 0)
+    MinimizedContent.Size = UDim2.new(1.3, 0, 1.3, 0)
+    MinimizedContent.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MinimizedContent.AnchorPoint = Vector2.new(0.5, 0.5)
     MinimizedContent.BackgroundTransparency = 1
     MinimizedContent.ScaleType = Enum.ScaleType.Fit
-    MinimizedContent.Image = "rbxassetid://94934028628105"
+    MinimizedContent.Image = "rbxassetid://132840680672910"
     MinimizedContent.Visible = false
     MinimizedContent.Parent = MainFrame
 
-    -- Garis Tepi (UIStroke) Merah yang lebih tebal (4)
+    -- GARIS/LAYOUT MERAH TETAP TIPIS (KETEBALAN 2)
     local minimizedStroke = Instance.new("UIStroke", MainFrame)
     minimizedStroke.Color = Color3.fromRGB(220, 40, 40)
-    minimizedStroke.Thickness = 4 
+    minimizedStroke.Thickness = 2 
     minimizedStroke.Enabled = false
 
-    -- Logika Minimize / Maximize
     local minimized = false
-    local normalSize = UDim2.new(0, 130, 0, 195)
+    local normalSize = UDim2.new(0, 128, 0, 230)
     local minimizedSize = UDim2.new(0, 34, 0, 34) 
     local normalBgColor = Color3.fromRGB(20, 20, 20)
     local minimizedBgColor = Color3.fromRGB(75, 75, 75)
@@ -297,7 +305,6 @@ showIntro(function()
         setMinimized(true)
     end)
 
-    -- Custom Drag & Click Handler untuk Minimized State
     local draggingMin = false
     local dragInputMin, dragStartMin, startPosMin
     local movedMin = false
@@ -337,12 +344,12 @@ showIntro(function()
 
     -- KONTAINER TOMBOL
     local ButtonContainer = Instance.new("ScrollingFrame")
-    ButtonContainer.Size = UDim2.new(1, 0, 1, -25)
-    ButtonContainer.Position = UDim2.new(0, 0, 0, 25)
+    ButtonContainer.Size = UDim2.new(1, 0, 1, -26)
+    ButtonContainer.Position = UDim2.new(0, 0, 0, 26)
     ButtonContainer.BackgroundTransparency = 1
     ButtonContainer.BorderSizePixel = 0
     ButtonContainer.ScrollBarThickness = 3
-    ButtonContainer.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    ButtonContainer.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
     ButtonContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     ButtonContainer.Parent = MainFrame
 
@@ -357,43 +364,23 @@ showIntro(function()
 
     local function createButton(text, color, callback)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 115, 0, 28)
+        btn.Size = UDim2.new(0, 116, 0, 28)
         btn.BackgroundColor3 = color
         btn.TextColor3 = Color3.new(1, 1, 1)
         btn.Font = Enum.Font.GothamBold
         btn.Text = text
-        btn.TextSize = 12
+        btn.TextSize = 11
         btn.BorderSizePixel = 0
         btn.Parent = ButtonContainer
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 3)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
         btn.MouseButton1Click:Connect(callback)
         return btn
     end
 
-    -- FUNGSI AMAN UNTUK RAGDOLL EVENT (Universal Safe Check)
     local RagdollEvent = nil
     pcall(function()
         RagdollEvent = ReplicatedStorage.Library.Modules.Ragdoll.Ragdoll
     end)
-
-    local function teleportPlayer(targetPos)
-        local char = LocalPlayer.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-        local root = char.HumanoidRootPart
-        local hum = char:FindFirstChild("Humanoid")
-        local safePos = Vector3.new(targetPos.X, targetPos.Y + 3, targetPos.Z)
-        root.CFrame = CFrame.new(safePos)
-        
-        if RagdollEvent then
-            pcall(function() firesignal(RagdollEvent.OnClientEvent, "Make", 2.5, safePos) end)
-            task.delay(0.5, function()
-                pcall(function() firesignal(RagdollEvent.OnClientEvent, "Destroy", 2.5) end)
-                if hum then hum.PlatformStanding = false; hum.Sit = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
-            end)
-        else
-            if hum then hum.PlatformStanding = false; hum.Sit = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
-        end
-    end
 
     local savedPos = nil
     createButton("Save Cord", Color3.fromRGB(180, 40, 40), function()
@@ -403,8 +390,33 @@ showIntro(function()
         end
     end)
 
+    -- TP Cord
     createButton("TP Cord", Color3.fromRGB(15, 120, 30), function()
-        if savedPos then teleportPlayer(savedPos); notify("Location System", "Berhasil TP!") else notify("Location System", "Belum ada koordinat!") end
+        if savedPos then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(savedPos + Vector3.new(0, 3, 0))
+                notify("TP System", "Berhasil Instant TP!")
+            end
+        else
+            notify("Location System", "Belum ada koordinat!")
+        end
+    end)
+
+    -- Tween Cord
+    createButton("Tween Cord", Color3.fromRGB(15, 100, 150), function()
+        if savedPos then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                local dist = (root.Position - savedPos).Magnitude
+                local tweenInfo = TweenInfo.new(dist / 50, Enum.EasingStyle.Linear)
+                TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(savedPos + Vector3.new(0, 3, 0))}):Play()
+                notify("TP System", "Sedang Tween Cord...")
+            end
+        else
+            notify("Location System", "Belum ada koordinat!")
+        end
     end)
 
     createButton("Fix Stuck", Color3.fromRGB(180, 100, 20), function()
@@ -419,7 +431,6 @@ showIntro(function()
         end
     end)
 
-    -- Fitur Rejoin Server
     createButton("Rejoin", Color3.fromRGB(30, 100, 180), function()
         notify("System", "Rejoining server...")
         pcall(function()
@@ -427,7 +438,6 @@ showIntro(function()
         end)
     end)
 
-    -- Fitur Server Hop
     createButton("Server Hop", Color3.fromRGB(120, 30, 180), function()
         notify("System", "Mencari server lain...")
         pcall(function()
@@ -449,7 +459,7 @@ showIntro(function()
                 local randomServer = servers[math.random(1, #servers)]
                 TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer, LocalPlayer)
             else
-                notify("System", "Server lain tidak ditemukan, mencoba teleport standar...")
+                notify("System", "Server lain tidak ditemukan!")
                 TeleportService:Teleport(game.PlaceId, LocalPlayer)
             end
         end)
@@ -500,7 +510,7 @@ showIntro(function()
 
         local titleLabel = Instance.new("TextLabel", promptFrame)
         titleLabel.Size = UDim2.new(1, -25, 0, 24)
-        titleLabel.Position = UDim2.new(0, 5, 0, 2)
+        titleLabel.Position = UDim2.new(0, 6, 0, 2)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = "Select Player"
         titleLabel.TextColor3 = Color3.new(1,1,1)
@@ -553,6 +563,32 @@ showIntro(function()
         end
     end)
 
+    -- Fitur FPS Boost
+    createToggle("FPS Boost", function()
+        pcall(function()
+            Lighting.GlobalShadows = false
+            Lighting.FogEnd = 9e9
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("BasePart") then
+                    v.Material = Enum.Material.SmoothPlastic
+                    v.Reflectance = 0
+                elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                    v.Enabled = false
+                elseif v:IsA("Decal") or v:IsA("Texture") then
+                    v.Transparency = 1
+                end
+            end
+        end)
+    end, function()
+        pcall(function()
+            Lighting.GlobalShadows = true
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+            notify("FPS Boost", "FPS Boost dimatikan")
+        end)
+    end)
+
     -- Speed
     local speedEnabled = false
     local speedConn
@@ -572,13 +608,13 @@ showIntro(function()
             Instance.new("UICorner", promptFrame).CornerRadius = UDim.new(0, 6)
 
             local textBox = Instance.new("TextBox", promptFrame)
-            textBox.Size = UDim2.new(0, 115, 0, 24); textBox.Position = UDim2.new(0.5, -57, 0, 10)
+            textBox.Size = UDim2.new(0, 120, 0, 24); textBox.Position = UDim2.new(0.5, -60, 0, 10)
             textBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45); textBox.TextColor3 = Color3.new(1,1,1)
             textBox.Font = Enum.Font.GothamBold; textBox.TextSize = 11; textBox.Text = tostring(speedValue); textBox.ZIndex = 101
             Instance.new("UICorner", textBox).CornerRadius = UDim.new(0, 4)
 
             local submitBtn = Instance.new("TextButton", promptFrame)
-            submitBtn.Size = UDim2.new(0, 115, 0, 24); submitBtn.Position = UDim2.new(0.5, -57, 0, 45)
+            submitBtn.Size = UDim2.new(0, 120, 0, 24); submitBtn.Position = UDim2.new(0.5, -60, 0, 45)
             submitBtn.BackgroundColor3 = Color3.fromRGB(15, 120, 30); submitBtn.TextColor3 = Color3.new(1,1,1)
             submitBtn.Font = Enum.Font.GothamBold; submitBtn.TextSize = 10; submitBtn.Text = "OK"; submitBtn.ZIndex = 101
             Instance.new("UICorner", submitBtn).CornerRadius = UDim.new(0, 4)
@@ -600,11 +636,18 @@ showIntro(function()
             btnSpeed.TextColor3 = Color3.fromRGB(200, 40, 40)
             notify("Speed", "Speed Dimatikan")
             if speedConn then speedConn:Disconnect() end
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = 16 end
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                local hum = LocalPlayer.Character.Humanoid
+                local defaultSpeed = 16
+                pcall(function()
+                    defaultSpeed = hum.DefaultWalkSpeed or 16
+                end)
+                hum.WalkSpeed = defaultSpeed
+            end
         end
     end)
 
-    -- Fly (Stabil, berdiri tegak sempurna, anti getar, tidak jatuh saat analog dilepas)
+    -- Fly
     local flyConn, controlModule, lockedPosition
     pcall(function()
         controlModule = require(LocalPlayer.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
@@ -629,7 +672,6 @@ showIntro(function()
                 moveVector = controlModule:GetMoveVector()
             end
             
-            -- Menjaga karakter tetap berdiri tegak (horizontal look vector saja tanpa kemiringan atas/bawah)
             local look = camCFrame.LookVector
             local flatLook = Vector3.new(look.X, 0, look.Z)
             if flatLook.Magnitude > 0 then
@@ -643,12 +685,9 @@ showIntro(function()
                 local direction = (camCFrame.LookVector * -moveVector.Z) + (camCFrame.RightVector * moveVector.X) + (camCFrame.UpVector * (moveVector.Y or 0))
                 root.AssemblyLinearVelocity = direction * flySpeed
                 lockedPosition = root.Position
-                
-                -- Karakter menghadap arah kamera secara horizontal dan tetap tegak
                 root.CFrame = CFrame.new(root.Position, root.Position + flatLook)
             else
                 root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                -- Mengunci posisi tepat tanpa goyang & tetap berdiri tegak
                 root.CFrame = CFrame.new(lockedPosition, lockedPosition + flatLook)
             end
         end)
