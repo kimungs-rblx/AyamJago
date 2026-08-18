@@ -1,20 +1,3 @@
--- GLOBAL GUARD: MENCEGAH SKRIP BERJALAN GANDA / MENUMPUK
-if getgenv().AyamJagoRunning then
-    pcall(function()
-        local lp = game:GetService("Players").LocalPlayer
-        if lp and lp:FindFirstChild("PlayerGui") then
-            for _, g in pairs(lp.PlayerGui:GetChildren()) do
-                if g.Name == "RagdollMenu" or g.Name == "IntroGui" or g.Name == "CustomNotifyGui" then
-                    g:Destroy()
-                end
-            end
-        end
-    end)
-end
-getgenv().AyamJagoRunning = true
-
--- [BAGIAN QUEUE_ON_TELEPORT DIHAPUS SEPENUHNYA UNTUK MENCEGAH UI MENUMPUK SAAT AUTO-EXECUTE/REJOIN]
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
@@ -255,7 +238,6 @@ showIntro(function()
     CloseBtn.Parent = MainFrame
     CloseBtn.MouseButton1Click:Connect(function() 
         notify("System", "Semua fitur dimatikan & menu ditutup")
-        getgenv().AyamJagoRunning = nil
         pcall(function()
             local char = LocalPlayer.Character
             if char then
@@ -344,7 +326,7 @@ showIntro(function()
         setMinimized(true)
     end)
 
-    -- [PERBAIKAN 1]: LOGIKA DRAG & KLIK SAAT MINIMIZE (THRESHOLD 3 PIXEL)
+    -- LOGIKA DRAG & KLIK SAAT MINIMIZE (THRESHOLD 3 PIXEL)
     local startInputPos, startGuiPos
     local hasMoved = false
 
@@ -359,7 +341,7 @@ showIntro(function()
     UserInputService.InputChanged:Connect(function(input)
         if minimized and startInputPos and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - startInputPos
-            if delta.Magnitude > 3 then -- Threshold 3 pixel
+            if delta.Magnitude > 3 then
                 hasMoved = true
             end
             if hasMoved then
@@ -625,7 +607,7 @@ showIntro(function()
         end)
     end)
 
-    -- [PERBAIKAN 2]: SPEED (FIX SPEED OFF TANPA LOOP, KEMBALI KE KECEPATAN SERVER)
+    -- Speed (FIX SPEED OFF TANPA LOOP, KEMBALI KE KECEPATAN SERVER)
     local speedEnabled = false
     local speedValue = 32
 
